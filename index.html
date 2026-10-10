@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Chapter Check</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+/* Layout: one column on phones (score, hardest five, marked-up chapter); on wide screens the chapter sits left and the hardest-five list stays pinned on the right. */
+:root {
+  --bg: #f2f5f9;
+  --surface: #ffffff;
+  --ink: #18212c;
+  --muted: #576373;
+  --line: #d8dee7;
+  --soft: #e7ecf3;
+  --bar: #bcc6d3;
+  --accent: #2a4bc0;
+  --accent-ink: #ffffff;
+  --hl: #ffe27a;
+  --hl-edge: #d9ad00;
+  --font-ui: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-text: "Newsreader", Georgia, "Times New Roman", serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11161d;
+    --surface: #181f28;
+    --ink: #e7ebf1;
+    --muted: #9aa6b6;
+    --line: #2a3340;
+    --soft: #232c38;
+    --bar: #3b4757;
+    --accent: #8ea6ff;
+    --accent-ink: #0f1730;
+    --hl: #55480f;
+    --hl-edge: #c3a312;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11161d;
+  --surface: #181f28;
+  --ink: #e7ebf1;
+  --muted: #9aa6b6;
+  --line: #2a3340;
+  --soft: #232c38;
+  --bar: #3b4757;
+  --accent: #8ea6ff;
+  --accent-ink: #0f1730;
+  --hl: #55480f;
+  --hl-edge: #c3a312;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font-ui); }
+h1, h2, p, ol { margin: 0; }
+.wrap { max-width: 1120px; margin-inline: auto; padding-inline: 16px; padding-block: 28px 56px; display: flex; flex-direction: column; gap: 28px; }
+
+h1 { font: 600 clamp(30px, 6vw, 44px)/1.1 var(--font-text); letter-spacing: -0.01em; text-wrap: balance; }
+.lede { margin-top: 10px; color: var(--muted); font-size: 16px; max-width: 58ch; }
+h2 { font: 600 21px/1.25 var(--font-text); text-wrap: balance; }
+.sub { margin-top: 4px; color: var(--muted); font-size: 13.5px; max-width: 60ch; }
+.eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+
+/* Input */
+.input { display: flex; flex-direction: column; gap: 10px; }
+.input-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.count { font: 500 12px var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+textarea { width: 100%; min-height: 210px; resize: vertical; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; font: 17px/1.6 var(--font-text); }
+textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.btn { background: transparent; color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 7px 14px; font: 500 14px var(--font-ui); cursor: pointer; }
+.btn:hover { background: var(--soft); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.fine { font-size: 13px; color: var(--muted); }
+.fine.note { color: var(--accent); }
+.empty { padding: 28px 0; color: var(--muted); font: italic 18px/1.5 var(--font-text); }
+
+/* Results */
+.results { display: flex; flex-direction: column; gap: 32px; }
+.score { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 22px; display: grid; gap: 28px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 760px) { .score { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 40px; } }
+.score-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; margin-top: 6px; }
+.score-num { font: 600 clamp(60px, 13vw, 92px)/1 var(--font-text); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.score-band { font: italic 400 24px/1.2 var(--font-text); }
+.score-level { margin-top: 6px; color: var(--muted); }
+.scale { position: relative; margin-top: 26px; }
+.bar { display: flex; height: 10px; }
+.seg { background: var(--soft); border-right: 2px solid var(--surface); }
+.seg:last-child { border-right: 0; }
+.seg.on { background: var(--accent); }
+.marker { position: absolute; top: -10px; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 8px solid var(--ink); transform: translateX(-50%); }
+.ticks { position: relative; height: 18px; margin-top: 6px; }
+.tick { position: absolute; font: 400 11px var(--font-mono); color: var(--muted); transform: translateX(-50%); }
+.tick:first-child { transform: none; }
+.tick:last-child { transform: translateX(-100%); }
+.scale-cap { margin-top: 4px; font-size: 12.5px; color: var(--muted); }
+.short-note { margin-top: 14px; font-size: 13px; color: var(--muted); }
+
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 22px; align-content: start; }
+@media (min-width: 520px) and (max-width: 759px) { .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.stat { border-top: 1px solid var(--line); padding: 10px 0 12px; min-width: 0; }
+.stat dt { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.stat dd { margin: 2px 0 0; font: 500 23px/1.25 var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* Rhythm */
+.rhythm { border-top: 1px solid var(--line); padding-top: 18px; display: flex; flex-direction: column; gap: 12px; }
+.rwrap { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 8px; }
+.raxis { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; font: 400 10px/1 var(--font-mono); color: var(--muted); height: 76px; }
+.plot { position: relative; height: 76px; display: flex; align-items: flex-end; justify-content: flex-start; gap: 1px; border-bottom: 1px solid var(--line); }
+.gl { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed var(--line); }
+.gl.top { top: 0; }
+.gl.mid { top: 50%; }
+.b { position: relative; flex: 1 1 0; min-width: 0; max-width: 14px; background: var(--bar); border-radius: 1px 1px 0 0; }
+.b.h { background: var(--accent); }
+
+/* Hardest five + chapter */
+.cols { display: grid; gap: 32px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 920px) {
+  .cols { grid-template-columns: minmax(0, 1.55fr) minmax(300px, 1fr); grid-template-areas: "chapter hard"; align-items: start; }
+  .chapter { grid-area: chapter; }
+  .hard { grid-area: hard; position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow: auto; }
+}
+.hard ol { list-style: none; padding: 0; margin-top: 12px; }
+.hard li { border-top: 1px solid var(--line); }
+.hard li:last-child { border-bottom: 1px solid var(--line); }
+.hitem { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 12px; width: 100%; text-align: left; background: none; border: 0; border-radius: 6px; padding: 14px 8px; color: inherit; font: inherit; cursor: pointer; }
+.hitem:hover { background: var(--soft); }
+.hitem:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.badge { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font: 500 12px/26px var(--font-mono); text-align: center; }
+.meta { font: 500 12px var(--font-mono); letter-spacing: 0.02em; color: var(--muted); }
+.stext { margin: 4px 0 6px; font: 16px/1.5 var(--font-text); display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.snote { font-size: 13px; color: var(--muted); }
+.hard-empty { margin-top: 12px; color: var(--muted); }
+
+.chapter .paper { margin-top: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: clamp(18px, 4vw, 36px); }
+.manuscript { display: flex; flex-direction: column; gap: 1em; max-width: 66ch; font: 18px/1.7 var(--font-text); overflow-wrap: anywhere; }
+.manuscript p { margin: 0; }
+mark.hl { background: var(--hl); color: inherit; border-bottom: 2px solid var(--hl-edge); border-radius: 2px; padding-block: 0.04em; -webkit-box-decoration-break: clone; box-decoration-break: clone; scroll-margin-top: 90px; }
+mark.hl::before { content: attr(data-rank); display: inline-block; margin-right: 5px; padding: 0 5px; border-radius: 3px; background: var(--accent); color: var(--accent-ink); font: 500 10px/1.6 var(--font-mono); vertical-align: 3px; }
+mark.hl.pin { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+.foot { border-top: 1px solid var(--line); padding-top: 16px; font-size: 13px; color: var(--muted); max-width: 78ch; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <h1>Chapter Check</h1>
+    <p class="lede">Paste a chapter to see how easy it is to read and which five sentences slow readers down the most.</p>
+  </header>
+
+  <section class="input" aria-label="Chapter input">
+    <div class="input-head">
+      <label class="eyebrow" for="src">Chapter text</label>
+      <span class="count" id="count">0 words</span>
+    </div>
+    <textarea id="src" rows="10" placeholder="Paste your chapter here. Separate paragraphs with a line break."></textarea>
+    <div class="actions">
+      <button type="button" class="btn" id="sampleBtn">Load example</button>
+      <button type="button" class="btn" id="clearBtn">Clear</button>
+      <span class="fine">Runs in your browser. Nothing is uploaded.</span>
+    </div>
+    <p class="fine note" id="sampleNote" hidden>This is an example chapter. Paste your own text to replace it.</p>
+  </section>
+
+  <p class="empty" id="empty" hidden>Paste a chapter above. Its score and five hardest sentences will appear here.</p>
+
+  <div class="results" id="results" hidden>
+    <section class="score" aria-label="Readability score">
+      <div>
+        <div class="eyebrow">Flesch Reading Ease</div>
+        <div class="score-line">
+          <span class="score-num" id="scoreNum">0</span>
+          <span class="score-band" id="scoreBand"></span>
+        </div>
+        <p class="score-level" id="scoreLevel"></p>
+        <div class="scale" aria-hidden="true">
+          <div class="marker" id="marker"></div>
+          <div class="bar" id="bar"></div>
+          <div class="ticks" id="ticks"></div>
+        </div>
+        <p class="scale-cap">Higher scores are easier to read.</p>
+        <p class="short-note" id="shortNote" hidden>This text is under 100 words, so the score may swing a lot. It settles with longer passages.</p>
+      </div>
+      <dl class="stats">
+        <div class="stat"><dt>Words</dt><dd id="stWords">0</dd></div>
+        <div class="stat"><dt>Sentences</dt><dd id="stSents">0</dd></div>
+        <div class="stat"><dt>Words / sentence</dt><dd id="stWps">0</dd></div>
+        <div class="stat"><dt>Syllables / word</dt><dd id="stSpw">0</dd></div>
+        <div class="stat"><dt>Grade level</dt><dd id="stGrade">0</dd></div>
+        <div class="stat"><dt>Reading time</dt><dd id="stTime">0</dd></div>
+      </dl>
+    </section>
+
+    <section class="rhythm" aria-label="Sentence length">
+      <div>
+        <h2>Sentence rhythm</h2>
+        <p class="sub">Each bar is one sentence in order, tall for long ones. The five hardest are blue.</p>
+      </div>
+      <div class="rwrap">
+        <div class="raxis" aria-hidden="true"><span>60+</span><span>30</span><span>0</span></div>
+        <div class="plot" id="plot" aria-hidden="true"><span class="gl top"></span><span class="gl mid"></span></div>
+      </div>
+    </section>
+
+    <div class="cols">
+      <section class="hard" aria-label="Five hardest sentences">
+        <h2>Five hardest sentences</h2>
+        <p class="sub">Ranked by the reading grade of each sentence on its own. Select one to find it in the chapter.</p>
+        <ol id="hardList"></ol>
+        <p class="hard-empty" id="hardEmpty" hidden>No sentence here has enough words to rank.</p>
+      </section>
+      <section class="chapter" aria-label="Marked-up chapter">
+        <h2>Your chapter, marked up</h2>
+        <div class="paper"><div class="manuscript" id="manuscript"></div></div>
+      </section>
+    </div>
+  </div>
+
+  <p class="foot">Scores use the Flesch Reading Ease and Flesch–Kincaid grade formulas with an estimated syllable count, so other tools may differ by a point or two. Sentences under six words are not ranked.</p>
+</main>
+
+<script>
+/*PURE_START*/
+const SAMPLE = [
+  "The ferry left the harbour at dawn. By the time the sun had cleared the cranes, Mira had counted the passengers twice. She did this whenever she was frightened: forty-one people, six bicycles, one goat.",
+  "Her uncle had told her the crossing would take an hour. He had not mentioned the weather, which was building in the south like a bruise, or that the captain, a man whose reluctance to communicate anything beyond the bare minimum was legendary among the dockworkers, would spend the entire journey staring at the horizon and muttering to himself.",
+  "“Is it going to rain?” she asked the woman beside her. “Probably,” the woman said. “Does it matter?”",
+  "It mattered. The envelope in Mira’s coat contained the only surviving documentation of her grandmother’s claim to the house on the island, and the unavoidable consequence of its becoming wet, given the quality of the ink that the municipal clerk had used and the notorious fragility of the paper on which the original deed had been copied, would be the effective dissolution of eleven years of patient legal effort.",
+  "She put her hand over the pocket. The goat bleated. Somewhere below, the engine changed its note, and the ferry began to turn.",
+  "By the time the first drops reached the deck, she had made up her mind. She would not wait for the island to come to her. She unbuttoned the coat, wrapped the envelope in the dry shirt she had packed for her cousin’s wedding, and tucked the bundle inside the goat’s wooden crate, where, the farmer assured her with enormous dignity, nothing had ever got wet."
+].join("\n");
+
+const ABBR = new Set(["mr", "mrs", "ms", "dr", "prof", "sr", "jr", "st", "vs", "mt", "fig"]);
+const WORD = /[A-Za-zÀ-ɏ0-9]+(?:['’-][A-Za-zÀ-ɏ0-9]+)*/g;
+
+function partSyl(w) {
+  w = w.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z]/g, "");
+  if (!w) return 1;
+  if (w.length <= 3) return 1;
+  w = w.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/, "").replace(/^y/, "");
+  const m = w.match(/[aeiouy]{1,2}/g);
+  return m ? m.length : 1;
+}
+function wordSyl(w) {
+  return w.split(/-/).reduce((n, p) => n + partSyl(p), 0) || 1;
+}
+
+function splitPara(p) {
+  const out = [];
+  let last = 0;
+  const re = /[.!?…]+["'”’)\]]*(?=\s|$)/g;
+  let m;
+  function push(a, b) {
+    while (a < b && /\s/.test(p[a])) a++;
+    while (b > a && /\s/.test(p[b - 1])) b--;
+    if (b > a) out.push([a, b]);
+  }
+  while ((m = re.exec(p))) {
+    const end = m.index + m[0].length;
+    const wm = p.slice(last, m.index).match(/([A-Za-z]+)$/);
+    const w = wm ? wm[1].toLowerCase() : "";
+    const lone = m[0].replace(/["'”’)\]]/g, "") === ".";
+    const abbr = lone && (ABBR.has(w) || (w.length === 1 && w !== "i" && w !== "a"));
+    const nx = p.slice(end).match(/^\s*(\S)/);
+    const lowerNext = nx && /[a-z]/.test(nx[1]);
+    if (abbr || lowerNext) continue;
+    push(last, end);
+    last = end;
+  }
+  if (p.slice(last).trim()) push(last, p.length);
+  return out;
+}
+
+function measure(t) {
+  const ws = t.match(WORD) || [];
+  let syl = 0;
+  const heavy = [];
+  for (const w of ws) {
+    const n = wordSyl(w);
+    syl += n;
+    if (n >= 4) heavy.push(w.toLowerCase());
+  }
+  const words = ws.length;
+  const asw = words ? syl / words : 0;
+  return { text: t, words, syl, heavy, grade: 0.39 * words + 11.8 * asw - 15.59 };
+}
+
+function analyze(text) {
+  const paras = [];
+  const sents = [];
+  const pr = /[^\n]+/g;
+  let pm;
+  while ((pm = pr.exec(text))) {
+    const p = pm[0];
+    if (!p.trim()) continue;
+    const pi = paras.length;
+    paras.push(p);
+    for (const [a, b] of splitPara(p)) {
+      const s = measure(p.slice(a, b));
+      if (s.words === 0) continue;
+      s.start = a; s.end = b; s.para = pi; s.idx = sents.length;
+      sents.push(s);
+    }
+  }
+  let W = 0, Y = 0;
+  for (const s of sents) { W += s.words; Y += s.syl; }
+  const S = sents.length;
+  const fre = W && S ? 206.835 - 1.015 * (W / S) - 84.6 * (Y / W) : 0;
+  const grade = W && S ? 0.39 * (W / S) + 11.8 * (Y / W) - 15.59 : 0;
+  const hard = sents.filter(s => s.words >= 6)
+    .sort((a, b) => b.grade - a.grade || b.words - a.words)
+    .slice(0, 5);
+  hard.forEach((s, i) => { s.rank = i + 1; });
+  return { paras, sents, W, Y, S, fre, grade, hard };
+}
+
+function advice(s) {
+  const bits = [];
+  if (s.words >= 22) {
+    const re = /;|\s[—–]\s|:\s|,\s(?:and|but|which|while|because|although|so|yet|who|where|when)\s/g;
+    const mid = s.text.length / 2;
+    let m, best = null;
+    while ((m = re.exec(s.text))) {
+      if (m.index < 12 || m.index > s.text.length - 12) continue;
+      if (!best || Math.abs(m.index - mid) < Math.abs(best.index - mid)) best = m;
+    }
+    if (best) {
+      const lead = s.text.slice(0, best.index).split(/\s+/).slice(-4).join(" ");
+      bits.push("Try a break after “…" + lead + "”.");
+    } else {
+      bits.push("Long, with no natural break. Try cutting a clause.");
+    }
+  }
+  if (s.heavy.length) {
+    bits.push("Heavy words: " + Array.from(new Set(s.heavy)).slice(0, 3).join(", ") + ".");
+  }
+  if (!bits.length) bits.push("Dense wording. Shorter words would lighten it.");
+  return bits.join(" ");
+}
+/*PURE_END*/
+
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var KEY = "chaptercheck.draft";
+  var BANDS = [
+    [0, 30, "Very difficult", "college graduate level"],
+    [30, 50, "Difficult", "college level"],
+    [50, 60, "Fairly difficult", "10th to 12th grade"],
+    [60, 70, "Plain English", "8th to 9th grade"],
+    [70, 80, "Fairly easy", "7th grade"],
+    [80, 90, "Easy", "6th grade"],
+    [90, 100, "Very easy", "5th grade"]
+  ];
+  var TICKS = [0, 30, 50, 60, 70, 80, 90, 100];
+
+  var src = $("src");
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch (e) {}
+  src.value = saved !== null ? saved : SAMPLE;
+
+  // Static scale bar and ticks
+  var bar = $("bar");
+  BANDS.forEach(function (b) {
+    var d = document.createElement("div");
+    d.className = "seg";
+    d.style.flex = (b[1] - b[0]) + " 1 0";
+    bar.appendChild(d);
+  });
+  var ticks = $("ticks");
+  TICKS.forEach(function (t) {
+    var d = document.createElement("span");
+    d.className = "tick";
+    d.style.left = t + "%";
+    d.textContent = t;
+    ticks.appendChild(d);
+  });
+
+  function esc(s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+  function fmt(n, d) { return n.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d }); }
+
+  function render() {
+    var text = src.value;
+    var r = analyze(text);
+    $("count").textContent = fmt(r.W, 0) + (r.W === 1 ? " word" : " words");
+    $("sampleNote").hidden = text !== SAMPLE;
+    if (!r.S) {
+      $("results").hidden = true;
+      $("empty").hidden = false;
+      return;
+    }
+    $("results").hidden = false;
+    $("empty").hidden = true;
+
+    var fre = r.fre;
+    var bi = BANDS.length - 1;
+    for (var i = 0; i < BANDS.length; i++) { if (fre < BANDS[i][1]) { bi = i; break; } }
+    $("scoreNum").textContent = Math.round(fre);
+    $("scoreBand").textContent = BANDS[bi][2];
+    $("scoreLevel").textContent = "Readable at about " + BANDS[bi][3] + ".";
+    $("marker").style.left = Math.max(0, Math.min(100, fre)) + "%";
+    Array.prototype.forEach.call(bar.children, function (el, k) { el.classList.toggle("on", k === bi); });
+    $("shortNote").hidden = r.W >= 100;
+
+    $("stWords").textContent = fmt(r.W, 0);
+    $("stSents").textContent = fmt(r.S, 0);
+    $("stWps").textContent = fmt(r.W / r.S, 1);
+    $("stSpw").textContent = fmt(r.Y / r.W, 2);
+    $("stGrade").textContent = fmt(Math.max(0, r.grade), 1);
+    var mins = r.W / 250;
+    $("stTime").textContent = mins < 1 ? "<1 min" : Math.round(mins) + " min";
+
+    // Rhythm
+    var plot = $("plot");
+    Array.prototype.slice.call(plot.querySelectorAll(".b")).forEach(function (n) { n.remove(); });
+    var frag = document.createDocumentFragment();
+    r.sents.forEach(function (s) {
+      var d = document.createElement("div");
+      d.className = "b" + (s.rank ? " h" : "");
+      d.style.height = Math.max(3, Math.min(s.words, 60) / 60 * 100) + "%";
+      d.title = "Sentence " + (s.idx + 1) + ": " + s.words + " words";
+      frag.appendChild(d);
+    });
+    plot.appendChild(frag);
+
+    // Hardest five
+    var list = $("hardList");
+    list.textContent = "";
+    $("hardEmpty").hidden = r.hard.length > 0;
+    r.hard.forEach(function (s) {
+      var li = document.createElement("li");
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "hitem";
+      var badge = document.createElement("span");
+      badge.className = "badge";
+      badge.textContent = s.rank;
+      var body = document.createElement("span");
+      var meta = document.createElement("span");
+      meta.className = "meta";
+      meta.textContent = "Grade " + fmt(Math.max(0, s.grade), 0) + " · " + s.words + " words";
+      var st = document.createElement("span");
+      st.className = "stext";
+      st.style.display = "-webkit-box";
+      st.textContent = s.text;
+      var nt = document.createElement("span");
+      nt.className = "snote";
+      nt.textContent = advice(s);
+      [meta, st, nt].forEach(function (n) { body.appendChild(n); });
+      body.style.display = "block";
+      meta.style.display = "block";
+      nt.style.display = "block";
+      btn.appendChild(badge);
+      btn.appendChild(body);
+      btn.addEventListener("click", function () { jump(s.rank); });
+      li.appendChild(btn);
+      list.appendChild(li);
+    });
+
+    // Marked-up chapter
+    var byPara = {};
+    r.sents.forEach(function (s) { (byPara[s.para] = byPara[s.para] || []).push(s); });
+    var html = "";
+    r.paras.forEach(function (p, pi) {
+      var pos = 0, h = "";
+      (byPara[pi] || []).forEach(function (s) {
+        h += esc(p.slice(pos, s.start));
+        var seg = esc(p.slice(s.start, s.end));
+        h += s.rank ? '<mark class="hl" id="hs-' + s.rank + '" data-rank="' + s.rank + '">' + seg + "</mark>" : seg;
+        pos = s.end;
+      });
+      h += esc(p.slice(pos));
+      html += "<p>" + h + "</p>";
+    });
+    $("manuscript").innerHTML = html;
+  }
+
+  function jump(rank) {
+    var el = $("hs-" + rank);
+    if (!el) return;
+    var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
+    el.classList.add("pin");
+    setTimeout(function () { el.classList.remove("pin"); }, 1800);
+  }
+
+  var timer;
+  function save() { try { localStorage.setItem(KEY, src.value); } catch (e) {} }
+  src.addEventListener("input", function () {
+    clearTimeout(timer);
+    timer = setTimeout(function () { render(); save(); }, 150);
+  });
+  $("sampleBtn").addEventListener("click", function () { src.value = SAMPLE; render(); save(); });
+  $("clearBtn").addEventListener("click", function () { src.value = ""; render(); save(); src.focus(); });
+
+  render();
+})();
+</script>
+</body>
+</html>
